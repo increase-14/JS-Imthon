@@ -1,92 +1,113 @@
-const form = document.getElementById('form');
-const accordion = document.getElementById('accordion');
-const drawer = document.getElementById('drawer');
-const toggleForm = document.getElementById('toggleForm');
-
 const API_URL = "https://faq-crud.onrender.com/api/faqs";
 
-let data = [];
-let editId = null;
+const form = document.getElementById("form");
+const accordion = document.getElementById("accordion");
+const drawer = document.getElementById("drawer");
+const toggleForm = document.getElementById("toggleForm");
 
-window.addEventListener("DOMContentLoaded", loadPosts);
+let list = [];
+let editMode = null;
 
-async function loadPosts() {
+window.addEventListener("DOMContentLoaded", fetchFaqs);
+
+async function fetchFaqs() {
   try {
     const res = await fetch(API_URL);
-    const result = await res.json();
-    if (result.success) {
-      data = result.data;
-      renderAccordion();
-    }
-  } catch (err) {}
+    const json = await res.json();
+    list = json.data || json || [];
+    renderFaqs();
+  } catch (e) {
+    console.log("Xato bor:", e);
+  }
 }
 
-toggleForm.addEventListener('click', () => {
-  drawer.classList.toggle('open');
+toggleForm.addEventListener("click", () => {
+  drawer.classList.toggle("open");
   form.reset();
-  editId = null;
+  editMode = null;
 });
 
-form.addEventListener('submit', async e => {
+form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const question = document.getElementById('question').value.trim();
-  const answer = document.getElementById('answer').value.trim();
-  if (!question || !answer) return;
+
+  const q = document.getElementById("question").value.trim();
+  const a = document.getElementById("answer").value.trim();
+
+  if (!q || !a) return ;
 
   try {
-    if (editId) {
-      await fetch(`${API_URL}/${editId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, answer })
-      });
-    } else {
-      await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, answer })
-      });
+    if (editMode) {
+      await fetch(`${API_URL}/${editMode}`, { method: "DELETE" });
+      editMode = null;
     }
+
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: q, answer: a }),
+    });
+
+    if (!res.ok) throw new Error("Xato bor");
+
     form.reset();
-    drawer.classList.remove('open');
-    editId = null;
-    loadPosts();
-  } catch (err) {}
+    drawer.classList.remove("open");
+    await fetchFaqs();
+  } catch (e) {
+    console.log("Xato bor:", e);
+  }
 });
 
-function renderAccordion() {
-  accordion.innerHTML = '';
-  data.forEach(item => {
-    const div = document.createElement('div');
-    div.className = 'accordion-item';
-    div.innerHTML = `
+function renderFaqs() {
+  accordion.innerHTML = "";
+
+  if (!list.length) {
+    accordion.innerHTML = "<p style='text-align:center;'>Xato bor</p>";
+    return;
+  }
+
+  list.forEach((item) => {
+    const id = item._id || item.id;
+    const box = document.createElement("div");
+    box.className = "accordion-item";
+
+    box.innerHTML = `
       <div class="header">${item.question}</div>
       <div class="content">
         <p>${item.answer}</p>
-        <div class="actions">
-          <button onclick="editItem('${item._id}')">O‘zgartirish</button>
-          <button onclick="deleteItem('${item._id}')">O‘chirish</button>
+        <div class="buttons">
+          <button class="edit" data-id="${id}">Ozgartirish</button>
+          <button class="del" data-id="${id}">Ochirish</button>
         </div>
       </div>
     `;
-    div.querySelector('.header').onclick = () => div.classList.toggle('active');
-    accordion.appendChild(div);
+
+    box.querySelector(".header").addEventListener("click", () => {
+      box.classList.toggle("active");
+    });
+
+    box.querySelector(".edit").addEventListener("click", () => {
+      const found = list.find((x) => (x._id || x.id) === id);
+      if (!found) return;
+      drawer.classList.add("open");
+      document.getElementById("question").value = found.question;
+      document.getElementById("answer").value = found.answer;
+      editMode = found._id || found.id;
+    });
+
+    box.querySelector(".del").addEventListener("click", async () => {
+      await removeFaq(id);
+    });
+
+    accordion.appendChild(box);
   });
 }
 
-window.editItem = function(id) {
-  const item = data.find(d => d._id === id);
-  if (!item) return;
-  drawer.classList.add('open');
-  document.getElementById('question').value = item.question;
-  document.getElementById('answer').value = item.answer;
-  editId = id;
-};
-
-window.deleteItem = async function(id) {
+async function removeFaq(id) {
   try {
     const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-    const result = await res.json();
-    if (result.success) loadPosts();
-  } catch (err) {}
-};
+    if (res.ok) await fetchFaqs();
+    else console.log("Server javobi:", res.status);
+  } catch (e) {
+    console.log("Xato bor:", e);
+  }
+}

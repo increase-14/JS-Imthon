@@ -186,3 +186,26 @@ button[type="submit"]:hover {
   transform: scale(1.05);
   filter: brightness(0.95);
 }
+.edit{
+  background-color: yellow;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  width: 300px;
+}
+.del{
+  background-color: red;
+  cursor: pointer;
+  padding: 10px;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  width: 300px;
+}
+.edit:hover{
+  padding: 15px;
+}
+.del:hover{
+  padding: 15px;
+}
